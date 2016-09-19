@@ -22,6 +22,7 @@
 package com.spotify.heroic;
 
 import com.google.common.collect.ImmutableSortedSet;
+
 import com.spotify.heroic.aggregation.Aggregation;
 import com.spotify.heroic.aggregation.AggregationCombiner;
 import com.spotify.heroic.aggregation.AggregationContext;
@@ -66,21 +67,24 @@ import com.spotify.heroic.suggest.TagKeyCount;
 import com.spotify.heroic.suggest.TagSuggest;
 import com.spotify.heroic.suggest.TagValueSuggest;
 import com.spotify.heroic.suggest.TagValuesSuggest;
+
 import eu.toolchain.async.AsyncFramework;
 import eu.toolchain.async.AsyncFuture;
 import eu.toolchain.async.Collector;
 import eu.toolchain.async.Transform;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
-import javax.inject.Inject;
-import javax.inject.Named;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+
+import javax.inject.Inject;
+import javax.inject.Named;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class CoreQueryManager implements QueryManager {
@@ -150,8 +154,8 @@ public class CoreQueryManager implements QueryManager {
                         }
                     }));
 
-                final Optional<Aggregation> aggregation =
-                    e.getSelect().map(expr -> expr.visit(new Expression.Visitor<Aggregation>() {
+                final Aggregation aggregation =
+                    e.getSelect().visit(new Expression.Visitor<Aggregation>() {
                         @Override
                         public Aggregation visitFunction(final FunctionExpression e) {
                             return aggregations.build(e.getName(), e.getArguments(),
@@ -162,14 +166,14 @@ public class CoreQueryManager implements QueryManager {
                         public Aggregation visitString(final StringExpression e) {
                             return visitFunction(e.cast(FunctionExpression.class));
                         }
-                    }));
+                    });
 
                 final Optional<Filter> filter = e.getFilter();
 
                 return newQuery()
                     .source(source)
                     .range(range)
-                    .aggregation(aggregation)
+                    .aggregation(Optional.of(aggregation))
                     .filter(filter);
             }
         });

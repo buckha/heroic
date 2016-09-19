@@ -26,19 +26,22 @@ import lombok.Data;
 
 import java.util.Optional;
 
+/**
+ * Type that represents the any '*' expression.
+ */
 @Data
-@JsonTypeName("empty")
-public class EmptyExpression implements Expression {
+@JsonTypeName("any")
+public class AnyExpression implements Expression {
     private final Context context;
 
     @Override
     public <R> R visit(final Visitor<R> visitor) {
-        return visitor.visitEmpty(this);
+        return visitor.visitAny(this);
     }
 
     @Override
     public <T extends Expression> T cast(Class<T> to) {
-        if (to.equals(Expression.class) || to.equals(EmptyExpression.class)) {
+        if (to.equals(Expression.class) || to.equals(AnyExpression.class)) {
             return (T) this;
         }
 
