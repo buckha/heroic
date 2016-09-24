@@ -26,6 +26,8 @@ import com.google.cloud.bigtable.config.CredentialOptions;
 import com.google.cloud.bigtable.grpc.BigtableSession;
 import com.spotify.heroic.metric.bigtable.api.BigtableDataClient;
 import com.spotify.heroic.metric.bigtable.api.BigtableDataClientImpl;
+import com.spotify.heroic.metric.bigtable.api.BigtableMutator;
+import com.spotify.heroic.metric.bigtable.api.BigtableMutatorImpl;
 import com.spotify.heroic.metric.bigtable.api.BigtableTableAdminClient;
 import com.spotify.heroic.metric.bigtable.api.BigtableTableTableAdminClientImpl;
 import eu.toolchain.async.AsyncFramework;
@@ -48,6 +50,9 @@ public class BigtableConnectionBuilder implements Callable<BigtableConnection> {
     private final AsyncFramework async;
     private final ExecutorService executorService;
 
+    private final boolean disableBulkMutations;
+    private final int flushIntervalSeconds;
+
     @Override
     public BigtableConnection call() throws Exception {
         final CredentialOptions credentials = this.credentials.build();
@@ -66,10 +71,13 @@ public class BigtableConnectionBuilder implements Callable<BigtableConnection> {
             new BigtableTableTableAdminClientImpl(async, session.getTableAdminClient(), project,
               instance);
 
-        final BigtableDataClient client =
-            new BigtableDataClientImpl(async, session.getDataClient(), project, instance);
+        final BigtableMutator mutator =
+            new BigtableMutatorImpl(async, session, disableBulkMutations, flushIntervalSeconds);
 
-        return new GrpcBigtableConnection(project, instance, session, adminClient, client);
+        final BigtableDataClient client =
+            new BigtableDataClientImpl(async, session, mutator, project, instance);
+
+        return new GrpcBigtableConnection(project, instance, session, mutator, adminClient, client);
     }
 
     @RequiredArgsConstructor
@@ -79,6 +87,7 @@ public class BigtableConnectionBuilder implements Callable<BigtableConnection> {
         private final String instance;
 
         final BigtableSession session;
+        final BigtableMutator mutator;
         final BigtableTableAdminClient tableAdminClient;
         final BigtableDataClient dataClient;
 
@@ -94,6 +103,7 @@ public class BigtableConnectionBuilder implements Callable<BigtableConnection> {
 
         @Override
         public void close() throws Exception {
+            mutator.close();
             session.close();
         }
     }
